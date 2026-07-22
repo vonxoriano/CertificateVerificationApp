@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { hashFile } from '../lib/hash'
 import { supabase } from '../lib/supabaseClient'
 import { verifyOnChain } from '../lib/chain'
+import { logActivity } from '../lib/activityLog'
 
 export default function VerifyPage() {
   const [file, setFile] = useState(null)
@@ -36,6 +37,12 @@ export default function VerifyPage() {
         chainOnline: chainResult.onChain,
       })
       setStatus('done')
+      logActivity({
+        type: 'verify',
+        hash,
+        label: data?.label || null,
+        result: data ? 'verified' : 'failed',
+      })
     } catch (err) {
       setErrorMsg(`Something went wrong: ${err.message}`)
       setStatus('error')
