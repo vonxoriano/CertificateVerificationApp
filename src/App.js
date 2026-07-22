@@ -1,11 +1,50 @@
+import { useState, useEffect } from 'react';
 import { NavLink, Routes, Route, Navigate } from 'react-router-dom';
 import IssuePage from './pages/IssuePage';
 import VerifyPage from './pages/VerifyPage';
+import ActivityLog from './components/ActivityLog';
 
 export default function App() {
+  const [theme, setTheme] = useState(
+    () => localStorage.getItem('theme') || 'light'
+  );
+  const [activityOpen, setActivityOpen] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  function toggleTheme() {
+    setTheme((t) => (t === 'light' ? 'dark' : 'light'));
+  }
+
   return (
     <div className="app-shell">
       <header className="app-header">
+        <div className="header-controls">
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setActivityOpen((o) => !o)}
+            aria-label="Recent activity"
+            title="Recent activity"
+          >
+            🕐
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={toggleTheme}
+            aria-label="Toggle dark mode"
+            title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+          >
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+
+          <ActivityLog open={activityOpen} onClose={() => setActivityOpen(false)} />
+        </div>
+
         <div className="mark">Ledger · Document Registry</div>
         <h1>Prove it hasn't changed.</h1>
         <p>

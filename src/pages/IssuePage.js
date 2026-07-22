@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { hashFile } from '../lib/hash'
 import { supabase } from '../lib/supabaseClient'
 import { registerOnChain } from '../lib/chain'
+import { extractCertificateDetails } from '../lib/certificateExtractor'
+import { logActivity } from '../lib/activityLog'
 
 export default function IssuePage() {
   const [file, setFile] = useState(null)
@@ -11,6 +13,11 @@ export default function IssuePage() {
   const [status, setStatus] = useState('idle') // idle | hashing | saving | done | error
   const [result, setResult] = useState(null)
   const [errorMsg, setErrorMsg] = useState('')
+
+  const [aiStatus, setAiStatus] = useState('idle') // idle | reading | done | error
+  const [aiProgress, setAiProgress] = useState(0)
+  const [aiFields, setAiFields] = useState(null)
+  const [aiError, setAiError] = useState('')
 
   async function handleFile(selected) {
     if (!selected) return
@@ -54,6 +61,7 @@ export default function IssuePage() {
 
       setResult({ ...data, chainNote: chainResult.note, onChain: chainResult.onChain })
       setStatus('done')
+      logActivity({ type: 'register', hash, label: label || null, result: 'registered' })
     } catch (err) {
       setErrorMsg(
         err.message?.includes('duplicate')
@@ -71,6 +79,28 @@ export default function IssuePage() {
     setResult(null)
     setStatus('idle')
     setErrorMsg('')
+    setAiStatus('idle')
+    setAiProgress(0)
+    setAiFields(null)
+    setAiError('')
+  }
+
+  async function handleAutoFill() {
+    if (!file) return
+    setAiStatus('reading')
+    setAiProgress(0)
+    setAiError('')
+    try {
+      const details = await extractCertificateDetails(file, setAiProgress)
+      setAiFields(details)
+      if (details.suggestedLabel) {
+        setLabel(details.suggestedLabel)
+      }
+      setAiStatus('done')
+    } catch (err) {
+      setAiError(err.message || 'Could not read details from this file.')
+      setAiStatus('error')
+    }
   }
 
   return (
@@ -125,6 +155,47 @@ export default function IssuePage() {
             value={label}
             onChange={(e) => setLabel(e.target.value)}
           />
+        </div>
+      )}
+
+      {file && file.type.startsWith('image/') && status !== 'done' && (
+        <div className="ai-extract">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleAutoFill}
+            disabled={aiStatus === 'reading'}
+          >
+            {aiStatus === 'reading'
+              ? `Reading certificate… ${aiProgress}%`
+              : '✨ Auto-fill details with AI'}
+          </button>
+          <div className="hint">
+            Runs OCR in your browser — the image is never sent anywhere.
+          </div>
+
+          {aiStatus === 'error' && (
+            <div className="note" style={{ color: 'var(--seal)' }}>{aiError}</div>
+          )}
+
+          {aiStatus === 'done' && aiFields && (
+            <div className="ai-fields">
+              <span className="tag">Extracted from certificate</span>
+              <dl>
+                <dt>Recipient</dt>
+                <dd>{aiFields.recipientName || 'Not detected'}</dd>
+                <dt>Institution</dt>
+                <dd>{aiFields.institution || 'Not detected'}</dd>
+                <dt>Course / title</dt>
+                <dd>{aiFields.courseTitle || 'Not detected'}</dd>
+                <dt>Date</dt>
+                <dd>{aiFields.date || 'Not detected'}</dd>
+              </dl>
+              <div className="hint">
+                Double-check these against the original — OCR can misread unusual fonts.
+              </div>
+            </div>
+          )}
         </div>
       )}
 
