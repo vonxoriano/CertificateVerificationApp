@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { hashFile } from '../lib/hash'
 import { supabase } from '../lib/supabaseClient'
 import { verifyOnChain } from '../lib/chain'
+import { verifyCertificateOnChain } from '../lib/blockfrost'
 
 export default function VerifyPage() {
   const [file, setFile] = useState(null)
@@ -29,11 +30,22 @@ export default function VerifyPage() {
 
       if (error) throw error
 
+      // If document is found and has a transaction hash, check Blockfrost on Cardano
+      let blockfrostData = null
+      if (data && data.tx_hash) {
+        try {
+          blockfrostData = await verifyCertificateOnChain(data.tx_hash)
+        } catch (bfErr) {
+          console.warn('Blockfrost query failed:', bfErr)
+        }
+      }
+
       setResult({
         hash,
         found: !!data,
         record: data,
         chainOnline: chainResult.onChain,
+        blockfrostData,
       })
       setStatus('done')
     } catch (err) {
@@ -103,6 +115,12 @@ export default function VerifyPage() {
               <dd>{result.record.label || '—'}</dd>
               <dt>Registered</dt>
               <dd>{new Date(result.record.created_at).toLocaleString()}</dd>
+              {result.record.tx_hash && (
+                <>
+                  <dt>Cardano Tx Hash</dt>
+                  <dd>{result.record.tx_hash}</dd>
+                </>
+              )}
             </dl>
           ) : (
             <p style={{ margin: 0, fontSize: '0.88rem' }}>
@@ -111,9 +129,19 @@ export default function VerifyPage() {
               you have the exact original file.
             </p>
           )}
-          {!result.chainOnline && (
+
+          {result.blockfrostData && (
+            <div className="note" style={{ marginTop: '1rem', textAlign: 'left' }}>
+              <strong>Blockfrost On-Chain Data Verified ✓</strong>
+              <pre style={{ fontSize: '0.75rem', overflowX: 'auto', marginTop: '0.5rem' }}>
+                {JSON.stringify(result.blockfrostData, null, 2)}
+              </pre>
+            </div>
+          )}
+
+          {!result.chainOnline && !result.blockfrostData && (
             <div className="note pending">
-              Checked against Supabase only — blockchain verification not yet connected.
+              Checked against Supabase — pending Cardano on-chain record.
             </div>
           )}
         </div>
