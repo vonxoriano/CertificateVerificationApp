@@ -1,25 +1,36 @@
-import logo from './logo.svg';
-import './App.css';
+import { NavLink, Routes, Route, Navigate } from 'react-router-dom';
+import IssuePage from './pages/IssuePage';
+import VerifyPage from './pages/VerifyPage';
 
-function App() {
+export default function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
+    <div className="app-shell">
+      <header className="app-header">
+        <div className="mark">Ledger · Document Registry</div>
+        <h1>Prove it hasn't changed.</h1>
         <p>
-          Edit <code>src/App.js</code> and save to reload.
+          Register a document's fingerprint once. Anyone can verify it
+          matches, forever — without ever seeing the file itself.
         </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+        <nav className="tab-bar">
+          <NavLink to="/issue" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Register
+          </NavLink>
+          <NavLink to="/verify" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Verify
+          </NavLink>
+        </nav>
       </header>
+
+      <main>
+        <Routes>
+          <Route path="/" element={<Navigate to="/issue" replace />} />
+          <Route path="/issue" element={<IssuePage />} />
+          <Route path="/verify" element={<VerifyPage />} />
+        </Routes>
+      </main>
+
+      <footer>fingerprinted client-side · sha-256 · never stores your file</footer>
     </div>
   );
 }
-
-export default App;
