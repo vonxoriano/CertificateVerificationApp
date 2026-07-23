@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://jncxxpxvmwuiqxzeyvvg.supabase.co';
-const supabaseAnonKey = 'sb_publishable_IAfKCz-mz2O1veoDIHOsjQ_Aji01RnV';
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn(
