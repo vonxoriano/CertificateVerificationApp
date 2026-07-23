@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Routes, Route, Navigate } from 'react-router-dom';
+import { CardanoWallet } from '@meshsdk/react';
 import IssuePage from './pages/IssuePage';
 import VerifyPage from './pages/VerifyPage';
 import ActivityLog from './components/ActivityLog';
@@ -23,6 +24,7 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <div className="header-controls">
+          <CardanoWallet label="Connect wallet" />
           <button
             type="button"
             className="icon-btn"

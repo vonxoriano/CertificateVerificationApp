@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useWallet } from '@meshsdk/react'
 import { hashFile } from '../lib/hash'
 import { supabase } from '../lib/supabaseClient'
 import { registerOnChain } from '../lib/chain'
@@ -6,6 +7,7 @@ import { extractCertificateDetails } from '../lib/certificateExtractor'
 import { logActivity } from '../lib/activityLog'
 
 export default function IssuePage() {
+  const { connected, wallet } = useWallet()
   const [file, setFile] = useState(null)
   const [label, setLabel] = useState('')
   const [hash, setHash] = useState('')
@@ -41,11 +43,11 @@ export default function IssuePage() {
   }
 
   async function handleRegister() {
-    if (!hash) return
+    if (!hash || !connected) return
     setStatus('saving')
     setErrorMsg('')
     try {
-      const chainResult = await registerOnChain(hash, label)
+      const chainResult = await registerOnChain(wallet, hash, label)
 
       const { data, error } = await supabase
         .from('documents')
@@ -200,13 +202,18 @@ export default function IssuePage() {
       )}
 
       {file && hash && status !== 'done' && (
-        <button
-          className="btn-primary"
-          disabled={status === 'saving'}
-          onClick={handleRegister}
-        >
-          {status === 'saving' ? 'Registering…' : 'Register document'}
-        </button>
+        <>
+          <button
+            className="btn-primary"
+            disabled={status === 'saving' || !connected}
+            onClick={handleRegister}
+          >
+            {status === 'saving' ? 'Registering…' : 'Register document'}
+          </button>
+          {!connected && (
+            <div className="hint">Connect a Cardano wallet above to register on-chain.</div>
+          )}
+        </>
       )}
 
       {status === 'error' && <div className="note" style={{ color: 'var(--seal)' }}>{errorMsg}</div>}
@@ -221,6 +228,12 @@ export default function IssuePage() {
             <dd>{result.label || '—'}</dd>
             <dt>Registered</dt>
             <dd>{new Date(result.created_at).toLocaleString()}</dd>
+            {result.tx_hash && (
+              <>
+                <dt>Cardano Tx Hash</dt>
+                <dd>{result.tx_hash}</dd>
+              </>
+            )}
           </dl>
           <div className="note pending">{result.chainNote}</div>
         </div>

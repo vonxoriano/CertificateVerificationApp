@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { hashFile } from '../lib/hash'
 import { supabase } from '../lib/supabaseClient'
-import { verifyOnChain } from '../lib/chain'
 import { verifyCertificateOnChain } from '../lib/blockfrost'
 import { logActivity } from '../lib/activityLog'
 
@@ -21,8 +20,6 @@ export default function VerifyPage() {
     try {
       const hash = await hashFile(selected)
 
-      const chainResult = await verifyOnChain(hash)
-
       const { data, error } = await supabase
         .from('documents')
         .select('*')
@@ -31,11 +28,12 @@ export default function VerifyPage() {
 
       if (error) throw error
 
-      // If document is found and has a transaction hash, check Blockfrost on Cardano
-      let blockfrostData = null
+      // If the record has a Cardano tx hash, confirm the on-chain metadata
+      // actually matches this file's hash — not just that a tx exists.
+      let chainCheck = null
       if (data && data.tx_hash) {
         try {
-          blockfrostData = await verifyCertificateOnChain(data.tx_hash)
+          chainCheck = await verifyCertificateOnChain(data.tx_hash, hash)
         } catch (bfErr) {
           console.warn('Blockfrost query failed:', bfErr)
         }
@@ -45,8 +43,7 @@ export default function VerifyPage() {
         hash,
         found: !!data,
         record: data,
-        chainOnline: chainResult.onChain,
-        blockfrostData,
+        chainCheck,
       })
       setStatus('done')
       logActivity({
@@ -137,18 +134,31 @@ export default function VerifyPage() {
             </p>
           )}
 
-          {result.blockfrostData && (
+          {result.record?.tx_hash && result.chainCheck?.found && result.chainCheck.matches && (
             <div className="note" style={{ marginTop: '1rem', textAlign: 'left' }}>
-              <strong>Blockfrost On-Chain Data Verified ✓</strong>
+              <strong>✓ Confirmed on Cardano</strong> — the hash in this transaction's
+              metadata matches this file exactly.
               <pre style={{ fontSize: '0.75rem', overflowX: 'auto', marginTop: '0.5rem' }}>
-                {JSON.stringify(result.blockfrostData, null, 2)}
+                {JSON.stringify(result.chainCheck.metadata, null, 2)}
               </pre>
             </div>
           )}
 
-          {!result.chainOnline && !result.blockfrostData && (
+          {result.record?.tx_hash && result.chainCheck?.found && !result.chainCheck.matches && (
+            <div className="note" style={{ marginTop: '1rem', color: 'var(--seal)' }}>
+              ⚠ On-chain record found, but its hash does not match this file.
+            </div>
+          )}
+
+          {result.record?.tx_hash && result.chainCheck && !result.chainCheck.found && (
             <div className="note pending">
-              Checked against Supabase — pending Cardano on-chain record.
+              Checked against Supabase — couldn't find matching metadata on that Cardano transaction yet.
+            </div>
+          )}
+
+          {result.found && !result.record?.tx_hash && (
+            <div className="note pending">
+              Checked against Supabase — no Cardano on-chain record for this entry.
             </div>
           )}
         </div>
