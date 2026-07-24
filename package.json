@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "@meshsdk/core": "^1.9.1",
-    "@meshsdk/react": "^2.0.0-beta.2",
+    "@meshsdk/react": "^1.8.14",
     "@supabase/supabase-js": "^2.110.8",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",

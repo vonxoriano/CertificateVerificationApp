@@ -28,6 +28,24 @@ module.exports = {
         /Failed to parse source map/,
       ]
 
+      // @sidan-lab/sidan-csl-rs-browser (Mesh SDK's CSL wasm) does
+      // `import * as wasm from "./sidan_csl_rs_bg.wasm"`. CRA has no wasm
+      // module type registered, so without this the .wasm file falls
+      // through to CRA's catch-all `asset/resource` rule and gets turned
+      // into a URL string instead of an instantiated module — every export
+      // (e.g. `language_new_plutus_v1`) then looks missing at runtime.
+      webpackConfig.experiments = {
+        ...webpackConfig.experiments,
+        asyncWebAssembly: true,
+      }
+
+      const assetRule = webpackConfig.module.rules
+        .find((rule) => Array.isArray(rule.oneOf))
+        ?.oneOf.find((rule) => rule.type === 'asset/resource')
+      if (assetRule) {
+        assetRule.exclude = [...(assetRule.exclude || []), /\.wasm$/]
+      }
+
       return webpackConfig
     },
   },
